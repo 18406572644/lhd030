@@ -6,7 +6,7 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body {
       width: 200px;
-      height: 200px;
+      height: 260px;
       overflow: hidden;
       background: transparent;
       user-select: none;
@@ -27,51 +27,115 @@
       color: #fff;
       font-size: 14px;
       font-family: 'Courier New', monospace;
-      background: rgba(0,0,0,0.5);
       padding: 2px 6px;
       border-radius: 4px;
       display: none;
+      pointer-events: none;
+      transition: background 0.3s;
+    }
+    #countdown.focus-mode {
+      background: rgba(220, 50, 50, 0.7);
+    }
+    #countdown.break-mode {
+      background: rgba(50, 180, 80, 0.7);
+    }
+    #progressIndicator {
+      position: absolute;
+      top: 202px;
+      left: 0;
+      width: 200px;
+      height: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+      pointer-events: none;
+    }
+    .pomo-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(255,255,255,0.4);
+      background: transparent;
+      transition: all 0.3s;
+    }
+    .pomo-dot.completed {
+      background: #e74c3c;
+      border-color: #e74c3c;
+    }
+    .pomo-dot.current {
+      border-color: #fff;
+      box-shadow: 0 0 4px rgba(255,255,255,0.5);
+    }
+    #phaseLabel {
+      position: absolute;
+      top: 220px;
+      left: 0;
+      width: 200px;
+      height: 18px;
+      text-align: center;
+      font-size: 10px;
+      font-family: 'Courier New', monospace;
+      color: rgba(255,255,255,0.7);
       pointer-events: none;
     }
     #settingsMenu {
       position: absolute;
       top: 0; left: 0;
       width: 200px;
+      height: 260px;
       background: rgba(40, 40, 60, 0.95);
       border-radius: 8px;
-      padding: 12px;
+      padding: 10px;
       display: none;
       z-index: 10;
       box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+      overflow-y: auto;
     }
     #settingsMenu h3 {
       color: #fff;
-      font-size: 13px;
-      margin-bottom: 8px;
+      font-size: 12px;
+      margin-bottom: 6px;
       text-align: center;
       font-family: 'Courier New', monospace;
     }
     #settingsMenu label {
       color: #ccc;
-      font-size: 11px;
+      font-size: 10px;
       display: block;
-      margin-bottom: 4px;
+      margin-bottom: 2px;
       font-family: 'Courier New', monospace;
     }
-    #settingsMenu select {
+    #settingsMenu select,
+    #settingsMenu input[type="number"] {
       width: 100%;
-      padding: 4px;
-      font-size: 12px;
+      padding: 3px 4px;
+      font-size: 11px;
       border-radius: 4px;
       border: 1px solid #555;
       background: #2a2a3a;
       color: #fff;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
+    }
+    #settingsMenu .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    #settingsMenu .checkbox-row input[type="checkbox"] {
+      width: 14px;
+      height: 14px;
+      accent-color: #e74c3c;
+    }
+    #settingsMenu .checkbox-row label {
+      margin-bottom: 0;
+      cursor: pointer;
     }
     #settingsMenu button {
       width: 100%;
-      padding: 6px;
-      font-size: 12px;
+      padding: 5px;
+      font-size: 11px;
       border: none;
       border-radius: 4px;
       cursor: pointer;
@@ -93,6 +157,8 @@
 <body>
   <canvas id="petCanvas" width="200" height="200"></canvas>
   <div id="countdown"></div>
+  <div id="progressIndicator"></div>
+  <div id="phaseLabel"></div>
   <div id="settingsMenu">
     <h3>番茄钟设置</h3>
     <label>专注时长 (分钟)</label>
@@ -103,7 +169,32 @@
       <option value="25" selected>25 分钟</option>
       <option value="45">45 分钟</option>
     </select>
-    <button id="btnStart">开始专注</button>
+    <label>短休息时长 (分钟)</label>
+    <select id="shortBreakDuration">
+      <option value="1">1 分钟 (测试)</option>
+      <option value="3">3 分钟</option>
+      <option value="5" selected>5 分钟</option>
+      <option value="10">10 分钟</option>
+    </select>
+    <label>长休息时长 (分钟)</label>
+    <select id="longBreakDuration">
+      <option value="1">1 分钟 (测试)</option>
+      <option value="10">10 分钟</option>
+      <option value="15" selected>15 分钟</option>
+      <option value="20">20 分钟</option>
+    </select>
+    <label>长休息间隔 (番茄数)</label>
+    <select id="longBreakInterval">
+      <option value="2">每 2 个</option>
+      <option value="3">每 3 个</option>
+      <option value="4" selected>每 4 个</option>
+      <option value="6">每 6 个</option>
+    </select>
+    <div class="checkbox-row">
+      <input type="checkbox" id="autoStartNext">
+      <label for="autoStartNext">自动开始下一阶段</label>
+    </div>
+    <button id="btnStart">开始番茄周期</button>
     <button id="btnCancel">取消</button>
   </div>
   <script src="renderer.js"></script>

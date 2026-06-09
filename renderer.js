@@ -2,7 +2,13 @@ const canvas = document.getElementById('petCanvas');
 const ctx = canvas.getContext('2d');
 const countdownEl = document.getElementById('countdown');
 const settingsMenu = document.getElementById('settingsMenu');
+const progressIndicator = document.getElementById('progressIndicator');
+const phaseLabel = document.getElementById('phaseLabel');
 const focusDurationSelect = document.getElementById('focusDuration');
+const shortBreakDurationSelect = document.getElementById('shortBreakDuration');
+const longBreakDurationSelect = document.getElementById('longBreakDuration');
+const longBreakIntervalSelect = document.getElementById('longBreakInterval');
+const autoStartNextCheckbox = document.getElementById('autoStartNext');
 const btnStart = document.getElementById('btnStart');
 const btnCancel = document.getElementById('btnCancel');
 
@@ -23,6 +29,8 @@ const C = {
   r: '#ff6b6b',
   y: '#ffe066',
   d: '#d4883a',
+  l: '#87ceeb',
+  m: '#ffb6c1',
 };
 
 const IDLE_FRAMES = [
@@ -175,6 +183,81 @@ const SLEEPING_FRAMES = [
   ],
 ];
 
+const RESTING_FRAMES = [
+  [
+    '________________',
+    '________________',
+    '___bb____bb_____',
+    '__boob__boob____',
+    '__bkwb__bkwb____',
+    '__bppb__bppb____',
+    '___bb____bb_____',
+    '__obooooooooob__',
+    '_oobooooooooob__',
+    '_oobooorrooob___',
+    '_oobooproooob___',
+    '__obooooodooob__',
+    '___boooooodob___',
+    '____bbooodbo____',
+    '________________',
+    '________________',
+  ],
+  [
+    '________________',
+    '________________',
+    '________________',
+    '___bb____bb_____',
+    '__boob__boob____',
+    '__bkwb__bkwb____',
+    '__bppbppppb_____',
+    '___bbbbbbb______',
+    '__obooooooooob__',
+    '_oobooooooooob__',
+    '_oobooorrooob___',
+    '_oobooproooob___',
+    '__obooooooooob__',
+    '___blllllllb____',
+    '____llllll_____',
+    '________________',
+  ],
+  [
+    '________________',
+    '________________',
+    '_____y__________',
+    '______y_________',
+    '___bb___bb______',
+    '__bkwb__bkwb____',
+    '__bppb__bppb____',
+    '___bb____bb_____',
+    '___obooooob_____',
+    '__ooboooob______',
+    '__ooborroob_____',
+    '__ooboproob_____',
+    '___oboooob______',
+    '___bbobbbb______',
+    '________________',
+    '________________',
+  ],
+  [
+    '________________',
+    '________________',
+    '___bb____bb_____',
+    '__bwwb__bwwb____',
+    '__bppb__bppb____',
+    '___bb____bb_____',
+    '__obooooooooob__',
+    '_oobooooooooob__',
+    '_ooboorrrrrob___',
+    '_oobooppppoob___',
+    '__obooooooooob__',
+    '___boooooooob___',
+    '____bobbbbbo____',
+    '________________',
+    '________________',
+    '________________',
+  ],
+];
+
 const ALERT_FRAMES = [
   [
     '________________',
@@ -253,6 +336,7 @@ const ALERT_FRAMES = [
 const FRAMES = {
   idle: IDLE_FRAMES,
   sleeping: SLEEPING_FRAMES,
+  resting: RESTING_FRAMES,
   alert: ALERT_FRAMES,
 };
 
@@ -261,7 +345,9 @@ let currentFrame = 0;
 let lastFrameTime = 0;
 const FRAME_INTERVAL = 250;
 
-let focusEndTime = null;
+let currentPhase = 'idle';
+let completedPomodoros = 0;
+let phaseEndTime = null;
 let countdownInterval = null;
 let isDragging = false;
 let dragStartX = 0;
@@ -293,6 +379,11 @@ function getAlertBounce() {
   return Math.sin(Date.now() / 120) * 8;
 }
 
+function getRestingBreath() {
+  if (currentState !== 'resting') return 0;
+  return Math.sin(Date.now() / 800) * 2;
+}
+
 function animate(timestamp) {
   if (timestamp - lastFrameTime >= FRAME_INTERVAL) {
     const frames = FRAMES[currentState];
@@ -303,7 +394,7 @@ function animate(timestamp) {
   const frames = FRAMES[currentState];
   const frameData = frames[currentFrame];
 
-  let offsetY = OFFSET_Y + getAlertBounce();
+  let offsetY = OFFSET_Y + getAlertBounce() + getRestingBreath();
   let offsetX = OFFSET_X;
 
   if (currentState === 'idle') {
@@ -316,14 +407,14 @@ function animate(timestamp) {
 }
 
 function updateCountdown() {
-  if (!focusEndTime) {
+  if (!phaseEndTime) {
     countdownEl.style.display = 'none';
     return;
   }
-  const remaining = Math.max(0, focusEndTime - Date.now());
+  const remaining = Math.max(0, phaseEndTime - Date.now());
   if (remaining <= 0) {
     countdownEl.style.display = 'none';
-    focusEndTime = null;
+    phaseEndTime = null;
     clearInterval(countdownInterval);
     countdownInterval = null;
     return;
@@ -333,30 +424,90 @@ function updateCountdown() {
   const seconds = totalSeconds % 60;
   countdownEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
   countdownEl.style.display = 'block';
-}
 
-function startFocus(durationMinutes) {
-  focusEndTime = Date.now() + durationMinutes * 60 * 1000;
-  currentState = 'sleeping';
-  currentFrame = 0;
-  settingsMenu.style.display = 'none';
-  if (countdownInterval) clearInterval(countdownInterval);
-  countdownInterval = setInterval(updateCountdown, 1000);
-  updateCountdown();
-  window.petAPI.startFocus(durationMinutes);
-}
-
-function stopFocus() {
-  focusEndTime = null;
-  currentState = 'idle';
-  currentFrame = 0;
-  countdownEl.style.display = 'none';
-  settingsMenu.style.display = 'none';
-  if (countdownInterval) {
-    clearInterval(countdownInterval);
-    countdownInterval = null;
+  countdownEl.classList.remove('focus-mode', 'break-mode');
+  if (currentPhase === 'focusing') {
+    countdownEl.classList.add('focus-mode');
+  } else if (currentPhase === 'short-break' || currentPhase === 'long-break') {
+    countdownEl.classList.add('break-mode');
   }
-  window.petAPI.stopFocus();
+}
+
+function updateProgressIndicator() {
+  progressIndicator.innerHTML = '';
+  const interval = parseInt(longBreakIntervalSelect.value, 10) || 4;
+  for (let i = 0; i < interval; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'pomo-dot';
+    if (i < completedPomodoros) {
+      dot.classList.add('completed');
+    } else if (i === completedPomodoros && (currentPhase === 'focusing' || currentPhase === 'alert')) {
+      dot.classList.add('current');
+    }
+    progressIndicator.appendChild(dot);
+  }
+}
+
+function updatePhaseLabel() {
+  const labels = {
+    idle: '',
+    focusing: '专注中...',
+    'short-break': '短休息',
+    'long-break': '长休息',
+    alert: '专注完成！',
+  };
+  phaseLabel.textContent = labels[currentPhase] || '';
+}
+
+function applyState(data) {
+  currentPhase = data.phase;
+  completedPomodoros = data.completedPomodoros || 0;
+  phaseEndTime = data.endTime || null;
+
+  const catStateMap = {
+    idle: 'idle',
+    focusing: 'sleeping',
+    'short-break': 'resting',
+    'long-break': 'resting',
+    alert: 'alert',
+  };
+
+  currentState = catStateMap[currentPhase] || 'idle';
+  currentFrame = 0;
+  settingsMenu.style.display = 'none';
+
+  if (phaseEndTime) {
+    if (countdownInterval) clearInterval(countdownInterval);
+    countdownInterval = setInterval(updateCountdown, 1000);
+    updateCountdown();
+  } else {
+    countdownEl.style.display = 'none';
+    if (countdownInterval) {
+      clearInterval(countdownInterval);
+      countdownInterval = null;
+    }
+  }
+
+  if (data.config) {
+    if (data.config.focusDuration) focusDurationSelect.value = String(data.config.focusDuration);
+    if (data.config.shortBreakDuration) shortBreakDurationSelect.value = String(data.config.shortBreakDuration);
+    if (data.config.longBreakDuration) longBreakDurationSelect.value = String(data.config.longBreakDuration);
+    if (data.config.longBreakInterval) longBreakIntervalSelect.value = String(data.config.longBreakInterval);
+    if (data.config.autoStartNext !== undefined) autoStartNextCheckbox.checked = data.config.autoStartNext;
+  }
+
+  updateProgressIndicator();
+  updatePhaseLabel();
+}
+
+function getCurrentConfig() {
+  return {
+    focusDuration: parseInt(focusDurationSelect.value, 10),
+    shortBreakDuration: parseInt(shortBreakDurationSelect.value, 10),
+    longBreakDuration: parseInt(longBreakDurationSelect.value, 10),
+    longBreakInterval: parseInt(longBreakIntervalSelect.value, 10),
+    autoStartNext: autoStartNextCheckbox.checked,
+  };
 }
 
 canvas.addEventListener('mousedown', (e) => {
@@ -401,11 +552,14 @@ function handleCatClick() {
     return;
   }
   if (currentState === 'alert') {
+    window.petAPI.dismissAlert();
     currentState = 'idle';
+    currentPhase = 'idle';
     currentFrame = 0;
+    updatePhaseLabel();
     return;
   }
-  if (currentState === 'sleeping') {
+  if (currentPhase === 'focusing' || currentPhase === 'short-break' || currentPhase === 'long-break') {
     return;
   }
   settingsMenu.style.display = 'block';
@@ -429,22 +583,40 @@ function showContextMenu(e) {
     box-shadow: 0 2px 12px rgba(0,0,0,0.3);
   `;
 
-  const quitItem = createMenuItem('退出', () => {
-    menu.remove();
-    window.petAPI.quit();
-  });
+  if (currentPhase === 'focusing') {
+    const abortItem = createMenuItem('提前结束专注 (作废)', () => {
+      menu.remove();
+      window.petAPI.abortFocus();
+    });
+    abortItem.style.color = '#ff6b6b';
+    menu.appendChild(abortItem);
+  }
+
+  if (currentPhase === 'short-break' || currentPhase === 'long-break') {
+    const skipItem = createMenuItem('跳过休息', () => {
+      menu.remove();
+      window.petAPI.skipBreak();
+    });
+    skipItem.style.color = '#5dbe7d';
+    menu.appendChild(skipItem);
+  }
+
+  if (currentPhase === 'focusing' || currentPhase === 'short-break' || currentPhase === 'long-break') {
+    const stopItem = createMenuItem('停止番茄周期', () => {
+      menu.remove();
+      window.petAPI.stopPomodoro();
+    });
+    menu.appendChild(stopItem);
+  }
+
   const resetItem = createMenuItem('重置位置', () => {
     menu.remove();
     window.petAPI.resetPosition();
   });
-
-  if (currentState === 'sleeping') {
-    const stopItem = createMenuItem('停止专注', () => {
-      menu.remove();
-      stopFocus();
-    });
-    menu.appendChild(stopItem);
-  }
+  const quitItem = createMenuItem('退出', () => {
+    menu.remove();
+    window.petAPI.quit();
+  });
 
   menu.appendChild(resetItem);
   menu.appendChild(quitItem);
@@ -480,41 +652,70 @@ function createMenuItem(text, onClick) {
 }
 
 btnStart.addEventListener('click', () => {
-  const duration = parseInt(focusDurationSelect.value, 10);
-  startFocus(duration);
+  const config = getCurrentConfig();
+  window.petAPI.setPomodoroConfig(config);
+  window.petAPI.startPomodoroCycle();
 });
 
 btnCancel.addEventListener('click', () => {
   settingsMenu.style.display = 'none';
 });
 
-window.petAPI.onStateChanged((state, duration) => {
-  currentState = state;
-  currentFrame = 0;
-  if (state === 'sleeping' && duration) {
-    focusEndTime = Date.now() + duration * 60 * 1000;
-    if (countdownInterval) clearInterval(countdownInterval);
-    countdownInterval = setInterval(updateCountdown, 1000);
-    updateCountdown();
-  }
-  if (state === 'idle') {
-    focusEndTime = null;
-    countdownEl.style.display = 'none';
-    if (countdownInterval) {
-      clearInterval(countdownInterval);
-      countdownInterval = null;
-    }
-  }
+focusDurationSelect.addEventListener('change', () => {
+  window.petAPI.setPomodoroConfig(getCurrentConfig());
+});
+shortBreakDurationSelect.addEventListener('change', () => {
+  window.petAPI.setPomodoroConfig(getCurrentConfig());
+});
+longBreakDurationSelect.addEventListener('change', () => {
+  window.petAPI.setPomodoroConfig(getCurrentConfig());
+});
+longBreakIntervalSelect.addEventListener('change', () => {
+  window.petAPI.setPomodoroConfig(getCurrentConfig());
+  updateProgressIndicator();
+});
+autoStartNextCheckbox.addEventListener('change', () => {
+  window.petAPI.setPomodoroConfig(getCurrentConfig());
+});
+
+window.petAPI.onStateChanged((data) => {
+  applyState(data);
 });
 
 (async () => {
   const savedState = await window.petAPI.getStore('petState');
-  const savedDuration = await window.petAPI.getStore('focusDuration');
   if (savedState) {
     currentState = savedState;
   }
-  if (savedDuration) {
-    focusDurationSelect.value = String(savedDuration);
-  }
+
+  try {
+    const pomodoroState = await window.petAPI.getPomodoroState();
+    if (pomodoroState) {
+      currentPhase = pomodoroState.phase || 'idle';
+      completedPomodoros = pomodoroState.completedPomodoros || 0;
+      phaseEndTime = pomodoroState.endTime || null;
+
+      if (pomodoroState.config) {
+        const cfg = pomodoroState.config;
+        if (cfg.focusDuration) focusDurationSelect.value = String(cfg.focusDuration);
+        if (cfg.shortBreakDuration) shortBreakDurationSelect.value = String(cfg.shortBreakDuration);
+        if (cfg.longBreakDuration) longBreakDurationSelect.value = String(cfg.longBreakDuration);
+        if (cfg.longBreakInterval) longBreakIntervalSelect.value = String(cfg.longBreakInterval);
+        if (cfg.autoStartNext !== undefined) autoStartNextCheckbox.checked = cfg.autoStartNext;
+      }
+
+      const catStateMap = {
+        idle: 'idle',
+        focusing: 'sleeping',
+        'short-break': 'resting',
+        'long-break': 'resting',
+        alert: 'alert',
+      };
+      currentState = catStateMap[currentPhase] || 'idle';
+    }
+  } catch (_) {}
+
+  updateProgressIndicator();
+  updatePhaseLabel();
   requestAnimationFrame(animate);
 })();
