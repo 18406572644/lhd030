@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 200px;
+      height: 200px;
+      overflow: hidden;
+      background: transparent;
+      user-select: none;
+      -webkit-app-region: no-drag;
+    }
+    #petCanvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 200px;
+      height: 200px;
+      cursor: grab;
+    }
+    #petCanvas:active { cursor: grabbing; }
+    #countdown {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      color: #fff;
+      font-size: 14px;
+      font-family: 'Courier New', monospace;
+      background: rgba(0,0,0,0.5);
+      padding: 2px 6px;
+      border-radius: 4px;
+      display: none;
+      pointer-events: none;
+    }
+    #settingsMenu {
+      position: absolute;
+      top: 0; left: 0;
+      width: 200px;
+      background: rgba(40, 40, 60, 0.95);
+      border-radius: 8px;
+      padding: 12px;
+      display: none;
+      z-index: 10;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+    }
+    #settingsMenu h3 {
+      color: #fff;
+      font-size: 13px;
+      margin-bottom: 8px;
+      text-align: center;
+      font-family: 'Courier New', monospace;
+    }
+    #settingsMenu label {
+      color: #ccc;
+      font-size: 11px;
+      display: block;
+      margin-bottom: 4px;
+      font-family: 'Courier New', monospace;
+    }
+    #settingsMenu select {
+      width: 100%;
+      padding: 4px;
+      font-size: 12px;
+      border-radius: 4px;
+      border: 1px solid #555;
+      background: #2a2a3a;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+    #settingsMenu button {
+      width: 100%;
+      padding: 6px;
+      font-size: 12px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: 'Courier New', monospace;
+      margin-bottom: 4px;
+    }
+    #btnStart {
+      background: #e74c3c;
+      color: #fff;
+    }
+    #btnStart:hover { background: #c0392b; }
+    #btnCancel {
+      background: #555;
+      color: #fff;
+    }
+    #btnCancel:hover { background: #444; }
+  </style>
+</head>
+<body>
+  <canvas id="petCanvas" width="200" height="200"></canvas>
+  <div id="countdown"></div>
+  <div id="settingsMenu">
+    <h3>番茄钟设置</h3>
+    <label>专注时长 (分钟)</label>
+    <select id="focusDuration">
+      <option value="1">1 分钟 (测试)</option>
+      <option value="5">5 分钟</option>
+      <option value="15">15 分钟</option>
+      <option value="25" selected>25 分钟</option>
+      <option value="45">45 分钟</option>
+    </select>
+    <button id="btnStart">开始专注</button>
+    <button id="btnCancel">取消</button>
+  </div>
+  <script src="renderer.js"></script>
+</body>
+</html>
