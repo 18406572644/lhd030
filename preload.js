@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('petAPI', {
     ipcRenderer.on('state-changed', (event, data) => callback(data));
   },
   getStore: (key) => ipcRenderer.invoke('get-store', key),
+  setStore: (key, value) => ipcRenderer.send('set-store', key, value),
   getPomodoroState: () => ipcRenderer.invoke('get-pomodoro-state'),
   moveWindow: (deltaX, deltaY) => ipcRenderer.send('move-window', deltaX, deltaY),
   getWindowBounds: () => ipcRenderer.invoke('get-window-bounds'),

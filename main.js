@@ -13,27 +13,27 @@ const DEFAULT_CONFIG = {
 };
 
 function loadStore() {
-  try {
-    if (fs.existsSync(storePath)) {
-      const data = JSON.parse(fs.readFileSync(storePath, 'utf8'));
-      return {
-        petState: data.petState || 'idle',
-        pomodoroConfig: { ...DEFAULT_CONFIG, ...(data.pomodoroConfig || {}) },
-        completedPomodoros: data.completedPomodoros || 0,
-        currentPhase: data.currentPhase || 'idle',
-        windowX: data.windowX,
-        windowY: data.windowY,
-      };
-    }
-  } catch (_) {}
-  return {
+  const defaults = {
     petState: 'idle',
     pomodoroConfig: { ...DEFAULT_CONFIG },
     completedPomodoros: 0,
     currentPhase: 'idle',
     windowX: undefined,
     windowY: undefined,
+    currentSkinId: 'orange',
+    customSkins: [],
   };
+  try {
+    if (fs.existsSync(storePath)) {
+      const data = JSON.parse(fs.readFileSync(storePath, 'utf8'));
+      return {
+        ...defaults,
+        ...data,
+        pomodoroConfig: { ...DEFAULT_CONFIG, ...(data.pomodoroConfig || {}) },
+      };
+    }
+  } catch (_) {}
+  return defaults;
 }
 
 function saveStore(data) {
@@ -289,6 +289,10 @@ ipcMain.handle('get-window-bounds', () => {
 
 ipcMain.handle('get-store', (event, key) => {
   return storeGet(key);
+});
+
+ipcMain.on('set-store', (event, key, value) => {
+  storeSet(key, value);
 });
 
 ipcMain.handle('get-pomodoro-state', () => {
