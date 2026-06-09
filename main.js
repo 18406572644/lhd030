@@ -278,6 +278,15 @@ ipcMain.on('quit', () => {
   app.quit();
 });
 
+ipcMain.handle('get-window-bounds', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    const bounds = mainWindow.getBounds();
+    const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
+    return { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height, screenWidth, screenHeight };
+  }
+  return null;
+});
+
 ipcMain.handle('get-store', (event, key) => {
   return storeGet(key);
 });

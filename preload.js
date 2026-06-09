@@ -15,4 +15,5 @@ contextBridge.exposeInMainWorld('petAPI', {
   getStore: (key) => ipcRenderer.invoke('get-store', key),
   getPomodoroState: () => ipcRenderer.invoke('get-pomodoro-state'),
   moveWindow: (deltaX, deltaY) => ipcRenderer.send('move-window', deltaX, deltaY),
+  getWindowBounds: () => ipcRenderer.invoke('get-window-bounds'),
 });
